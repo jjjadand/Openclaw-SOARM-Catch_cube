@@ -38,7 +38,7 @@ def enable_robot(port: str, robot_id: str, keep_connected: bool = True) -> None:
         
         gripper = obs.get("gripper.pos", 0)
         print(f"夹爪: {gripper:.1f}%")
-        
+
         if keep_connected:
             print("\n✓ 机械臂已使能，保持连接状态")
             # 保持连接，不断开
