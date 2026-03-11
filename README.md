@@ -8,7 +8,8 @@
 ├── setup.sh                    # 一键安装脚本
 ├── soarm-control/              # 核心：机械臂控制 (必装)
 │   ├── scripts/
-│   │   ├── pinocchio_xyz_drive.py   # XYZ 坐标控制 (推荐)
+│   │   ├── soarm_pick_and_place.py  # 抓取 cube 完整序列 (主功能)
+│   │   ├── pinocchio_xyz_drive.py   # XYZ 坐标控制 (IK)
 │   │   ├── soarm_set_joints.py      # 关节角度控制
 │   │   ├── soarm_status.py          # 读取机械臂状态
 │   │   ├── soarm_get_position.py    # 读取末端 XYZ 坐标
@@ -58,13 +59,40 @@ bash setup.sh --skip-lerobot --skip-pinocchio
 
 ## 使用方法
 
-激活环境后即可使用：
+所有脚本在 conda 环境中运行。Jetson 上需要预加载 `libstdc++`：
 
 ```bash
+# Jetson 环境变量 (建议写入 ~/.bashrc)
+export LD_PRELOAD=$HOME/miniconda3/envs/lerobot/lib/libstdc++.so.6
 conda activate lerobot
 ```
 
-### XYZ 坐标控制 (推荐)
+### 抓取 cube (主功能)
+
+执行完整的抓取-搬运-放置-复位序列：
+
+```bash
+python soarm-control/scripts/soarm_pick_and_place.py --speed 20
+```
+
+动作序列共 6 步：
+1. 移动到准备位置，张开夹爪
+2. 靠近物块，收紧夹爪抓取
+3. 抬起物块
+4. 移动到放置位置
+5. 放下物块，张开夹爪
+6. 复位到 home 位置
+
+参数：
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--speed` | 移动速度 (度/秒) | 20 |
+| `--pause` | 每步之间停顿时间 (秒) | 0.5 |
+| `--port` | 串口设备 | /dev/ttyACM0 |
+| `--robot-id` | 机器人 ID | openclaw_soarm |
+
+### XYZ 坐标控制
 
 通过逆运动学计算，直接指定末端目标位置：
 
@@ -90,7 +118,7 @@ python soarm-control/scripts/pinocchio_xyz_drive.py --x 0.15 --y 0.05 --z 0.08 -
 直接设置各关节角度，适用于预设位置：
 
 ```bash
-# 回到 home 位置
+# home 位置
 python soarm-control/scripts/soarm_set_joints.py \
     --shoulder-pan 1.626 --shoulder-lift -104.088 --elbow-flex 97.495 \
     --wrist-flex 77.714 --wrist-roll -95.077
@@ -118,7 +146,7 @@ python soarm-control/scripts/soarm_disable.py
 
 | Skill | 说明 | 必装 |
 |-------|------|------|
-| soarm-control | 机械臂控制核心代码，包含 IK 求解、关节控制、状态读取 | ✅ |
+| soarm-control | 机械臂控制核心，包含抓取序列、IK 求解、关节控制、状态读取 | ✅ |
 | lerobot-env-setup | Jetson 平台 LeRobot 环境配置，解决 torch GPU wheel 兼容性问题 | Jetson 必装 |
 | pinocchio-install | Pinocchio 刚体动力学库安装，支持 conda/pip/源码三种方式 | ✅ |
 
@@ -128,10 +156,8 @@ python soarm-control/scripts/soarm_disable.py
 |------|----------|
 | `/dev/ttyACM0` 权限不足 | `sudo usermod -aG dialout $USER` 后重新登录 |
 | 串口被 brltty 占用 | `sudo apt remove brltty` |
+| Jetson 上 `GLIBCXX` 版本错误 | 设置 `LD_PRELOAD=$HOME/miniconda3/envs/lerobot/lib/libstdc++.so.6` |
 | Jetson 上 `torch.cuda.is_available()` 为 False | 删除 `~/wheels/*.whl` 后重新运行 `bash setup.sh` |
-| `import pinocchio` 失败 (aarch64) | 检查 `pinocchio-install/references/build_troubleshooting.md` |
-| IK 求解失败 | 目标坐标可能超出工作空间，尝试更近的坐标 |
-
-## 许可证
-
-本项目仅供学习和研究使用。
+| `import pinocchio` 失败 (aarch64) | 查看 `pinocchio-install/references/build_troubleshooting.md` |
+| IK 求解失败 | 目标坐标超出工作空间，尝试更近的坐标 |
+| 抓取序列夹不住物块 | 调整 `soarm_pick_and_place.py` 中 `PICK_AND_PLACE_SEQUENCE` 的夹爪值 (当前为 12) |
