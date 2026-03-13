@@ -1,0 +1,4 @@
+interface:
+  display_name: "SOARM Control"
+  short_description: "Operate the OpenClaw SOARM backend"
+  default_prompt: "Use $soarm-control-v2-0 to start, query, and move the OpenClaw SOARM backend safely."
